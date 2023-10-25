@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-var image, filename string
+var image, filename, savetag string
 
 func main() {
 	LISTENPORT := os.Getenv("LISTENPORT")
@@ -42,12 +42,17 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == "POST" {
 		arr := strings.Split(r.FormValue("image"), "/")
 		filename = strings.Replace(arr[len(arr)-1], ":", "-", 1) + ".tar"
-		err := os.WriteFile(filename, []byte("000"), 0644)
-		if err != nil {
-			fmt.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		savetag = strings.Join(arr[1:], "/")
+		// err := os.WriteFile(filename, []byte("000"), 0644)
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 	return
+		// }
+		// err = os.Remove(filename)
+		// if err == nil {
+		// 	fmt.Println("delete" + filename + "success")
+		// }
 		image = r.FormValue("image")
 		http.Redirect(w, r, "/download?filename="+filename, http.StatusSeeOther)
 	}
@@ -56,7 +61,10 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 func handleDownload(w http.ResponseWriter, r *http.Request) {
 	// cmd := exec.Command("skopeo", "copy", "docker://"+image, "oci-archive:"+filename)
 	// fmt.Println(cmd)
-	Command("skopeo copy docker://" + image + " oci-archive:" + filename)
+	_, err := os.Stat(filename)
+	if err != nil {
+		Command("skopeo copy docker://" + image + " docker-archive:" + filename + ":" + savetag + " --src-tls-verify=false")
+	}
 	w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 	w.Header().Set("Content-Type", "application/tar")
 	http.ServeFile(w, r, filename)
@@ -64,6 +72,7 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 
 func Command(cmd string) error {
 	//c := exec.Command("cmd", "/C", cmd) 	// windows
+	fmt.Println(cmd)
 	c := exec.Command("bash", "-c", cmd) // mac or linux
 	stdout, err := c.StdoutPipe()
 	if err != nil {
