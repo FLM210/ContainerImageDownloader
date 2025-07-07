@@ -63,7 +63,7 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println(cmd)
 	_, err := os.Stat(filename)
 	if err != nil {
-		Command("skopeo copy docker://" + image + " docker-archive:" + filename + ":" + savetag + " --src-tls-verify=false")
+		Command("skopeo copy docker://" + image + " oci-archive:" + filename + ":" + savetag + " --src-tls-verify=false"+"   --dest-compress-format zstd --dest-compress-level 5")
 	}
 	w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 	w.Header().Set("Content-Type", "application/tar")
