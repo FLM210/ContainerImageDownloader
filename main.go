@@ -451,8 +451,12 @@ func Command(cmd string) error {
 	if err != nil {
 		return err
 	}
+
+	// 创建缓冲区来保存输出
+	var stdoutBuf, stderrBuf strings.Builder
 	var wg sync.WaitGroup
 	wg.Add(2)
+
 	// 处理标准输出
 	go func() {
 		defer wg.Done()
@@ -462,28 +466,41 @@ func Command(cmd string) error {
 			if err != nil || err == io.EOF {
 				return
 			}
-			fmt.Println(readString)
+			fmt.Print(readString)             // 打印到控制台
+			stdoutBuf.WriteString(readString) // 保存到缓冲区
 		}
 	}()
+
 	// 处理标准错误
 	go func() {
 		defer wg.Done()
 		reader := bufio.NewReader(stderr)
 		for {
-			readString, err := reader.ReadString('\n')
-			if err != nil || err == io.EOF {
+			readString, errr := reader.ReadString('\n')
+			if errr != nil || errr == io.EOF {
 				return
 			}
-			fmt.Fprintln(os.Stderr, readString)
+			fmt.Fprint(os.Stderr, readString) // 打印到控制台
+			stderrBuf.WriteString(readString) // 保存到缓冲区
 		}
 	}()
+
 	// 启动命令
 	err = c.Start()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start command: %w\nSTDOUT: %s\nSTDERR: %s", err, stdoutBuf.String(), stderrBuf.String())
 	}
+
 	// 等待输出处理完成
 	wg.Wait()
+
 	// 等待命令完成并回收进程
-	return c.Wait()
+	cmdErr := c.Wait()
+	if cmdErr != nil {
+		// 命令执行失败，返回包含输出的错误
+		return fmt.Errorf("command execution failed: %w\nSTDOUT: %s\nSTDERR: %s", cmdErr, stdoutBuf.String(), stderrBuf.String())
+	}
+
+	// 命令执行成功
+	return nil
 }
