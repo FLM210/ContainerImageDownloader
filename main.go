@@ -392,7 +392,11 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 
 	} else if r.Method == "POST" {
 		arr := strings.Split(r.FormValue("image"), "/")
-		filename := strings.Replace(arr[len(arr)-1], ":", "-", 1) + ".tar"
+		filename := strings.Replace(arr[len(arr)-1], ":", "_", 1) + ".tar"
+		if r.FormValue("format") == "docker-archive" {
+			filename = "oci-archive_" + filename
+		}
+
 		savetag := strings.Join(arr[1:], "/")
 
 		image := r.FormValue("image")
