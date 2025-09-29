@@ -403,7 +403,11 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 
 		_, err := os.Stat(filename)
 		if err != nil {
-			Command("skopeo copy docker://" + image + " " + r.FormValue("format") + ":" + filename + ":" + savetag + " --src-tls-verify=false --dest-compress-format zstd --dest-compress-level 5")
+			if err := Command("skopeo copy docker://" + image + " " + r.FormValue("format") + ":" + filename + ":" + savetag + " --src-tls-verify=false --dest-compress-format zstd --dest-compress-level 5"); err != nil {
+				showMessage(w, "Failed to download image: "+err.Error(), "error")
+				return
+			}
+
 		}
 		// 重定向到带有成功参数和文件名的URL
 		http.Redirect(w, r, "/?success=true&filename="+filename, http.StatusSeeOther)
